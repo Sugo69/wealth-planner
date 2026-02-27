@@ -321,34 +321,34 @@ const App = () => {
   }, [conversionStartYear, phase1Duration, phase1Salary, phase2Duration, phase2Salary, spouseDuration, spouseSalary, isWorking, currentAge, spouseAge, primarySsiAge, primarySsiAmount, spouseSsiAge, spouseSsiAmount, hasSsi, hasSpouse, filingStatus, investmentIncome, capitalGains]);
 
   // --- MC Loop ---
+  // --- MC Loop (Worker Version) ---
   useEffect(() => {
     if (activePage !== 'monte-carlo') return;
+    
     setIsCalculatingMC(true);
-    const timer = setTimeout(() => {
-      const mcSettings = { mcVolatility, mcInflationStd };
-      const newMcData = {};
-      for (let slot of [1, 2, 3]) {
-        const targetConfig = slot === activeSlot ? currentActiveConfig : (allCasesData[slot] || defaultConfig);
-        const targetEvents = globalEvents.filter(e => e.applicableSlots?.includes(slot) ?? true);
-        let successCount = 0, percentilesData = [];
-        let terminalBalances = [], allPaths = [];
-        for (let i = 0; i < mcSimCount; i++) {
-          const { data: path, isBroke, finalBalance } = runSimulationCore(targetConfig, targetEvents, true, mcSettings);
-          if (!isBroke) successCount++;
-          allPaths.push(path); terminalBalances.push(finalBalance);
-        }
-        if(allPaths.length > 0) {
-          const timePoints = allPaths[0].length;
-          for (let t = 0; t < timePoints; t++) {
-            const balances = allPaths.map(p => p[t].balance).sort((a, b) => a - b);
-            percentilesData.push({ age: allPaths[0][t].age, p10: Math.round(balances[Math.floor(mcSimCount * 0.10)]), median: Math.round(balances[Math.floor(mcSimCount * 0.50)]), p90: Math.round(balances[Math.floor(mcSimCount * 0.90)]) });
-          }
-        }
-        newMcData[slot] = { successProbability: (successCount / mcSimCount) * 100, percentilesData };
-      }
-      setMcData(newMcData); setIsCalculatingMC(false);
-    }, 400);
-    return () => clearTimeout(timer);
+
+    // Initialize the background worker
+    const worker = new Worker(new URL('./workers/simulation.worker.js', import.meta.url), { type: 'module' });
+
+    // Send all the necessary data to the background thread
+    worker.postMessage({
+      config: currentActiveConfig,
+      events: globalEvents,
+      mcSettings: { mcVolatility, mcInflationStd },
+      mcSimCount,
+      activeSlot,
+      allCasesData,
+      defaultConfig
+    });
+
+    // Handle the finished data coming back
+    worker.onmessage = (e) => {
+      setMcData(e.data);
+      setIsCalculatingMC(false);
+      worker.terminate(); // Free up memory
+    };
+
+    return () => worker.terminate(); // Cleanup if user leaves the page
   }, [activePage, mcSimCount, mcVolatility, mcInflationStd, currentActiveConfig, allCasesData, activeSlot, globalEvents]);
 
   // --- Actionable AI Strategic Advisors ---
