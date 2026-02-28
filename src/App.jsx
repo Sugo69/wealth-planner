@@ -254,8 +254,14 @@ const currentActiveConfig = useMemo(() => ({
     } catch (e) { setSaveStatus('error'); }
   }, [user, activeSlot, currentActiveConfig, strategyNames, globalEvents]);
 
-  const handleSlotChange = (newSlot) => { if (activeSlot !== newSlot) { saveCurrentStrategy(activeSlot); setActiveSlot(newSlot); } };
-  
+  const handleSlotChange = (newSlot) => { 
+  if (activeSlot !== newSlot) { 
+    // Capture current work into the master list before moving
+    setAllCasesData(prev => ({...prev, [activeSlot]: currentActiveConfig}));
+    setActiveSlot(newSlot); 
+  } 
+};
+    
   const handleRevert = useCallback(() => {
     if (allCasesData[activeSlot]) applyConfigToState(allCasesData[activeSlot]); else applyConfigToState(defaultConfig);
     setGlobalEvents(savedGlobalEvents); setSaveStatus('idle');
