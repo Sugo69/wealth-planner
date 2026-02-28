@@ -152,7 +152,8 @@ const currentActiveConfig = useMemo(() => ({
   annualConversionAmount, conversionStartYear, conversionDuration, 
   targetMarginalBracket
 }), [
-  currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, 
+  annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket, 
+  currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, useSpousalSsiRule,
   perezIntensity, perezCalendarYear, portfolioValue, rothBalance, iraBalance, 
   growthRate, homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, 
   replacementHomeValue, homeSaleFee, goGoSpend, goGoDuration, slowGoSpend, 
@@ -160,8 +161,7 @@ const currentActiveConfig = useMemo(() => ({
   hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, 
   isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, 
   spouseSalary, spouseDuration, filingStatus, currentState, destinationState, 
-  relocationYear, investmentIncome, capitalGains, rothConversionStrategy, 
-  annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket
+  relocationYear, investmentIncome, capitalGains, rothConversionStrategy
 ]);
 
   const applyConfigToState = useCallback((data) => {
@@ -182,6 +182,7 @@ const currentActiveConfig = useMemo(() => ({
     setIsDownsizing(data.isDownsizing ?? defaultConfig.isDownsizing);
     setDownsizeCalendarYear(data.downsizeCalendarYear ?? defaultConfig.downsizeCalendarYear);
     setReplacementHomeValue(data.replacementHomeValue ?? defaultConfig.replacementHomeValue);
+    setNumChildren(data.numChildren ?? defaultConfig.numChildren);
     setHomeSaleFee(data.homeSaleFee ?? defaultConfig.homeSaleFee);
     setGoGoSpend(data.goGoSpend ?? defaultConfig.goGoSpend);
     setGoGoDuration(data.goGoDuration ?? defaultConfig.goGoDuration);
@@ -412,7 +413,7 @@ const handleSlotChange = (newSlot) => {
        if (hasSpouse && startIdx < spouseDuration) wSalary += spouseSalary;
     }
     const ssiBase = (hasSsi && (currentAge + startIdx) >= primarySsiAge) ? primarySsiAmount : 0;
-const spSsiBase = (hasSsi && hasSpouse && (spouseAge + startIdx) >= spouseSsiAge) 
+    const spSsiBase = (hasSsi && hasSpouse && (spouseAge + startIdx) >= spouseSsiAge) 
       ? (useSpousalSsiRule ? (primarySsiAmount / 2) : spouseSsiAmount) 
       : 0;
     const baseIncome = wSalary + ssiBase + spSsiBase + investmentIncome + capitalGains;
