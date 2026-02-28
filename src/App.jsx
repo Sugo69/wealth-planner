@@ -301,6 +301,10 @@ const currentActiveConfig = useMemo(() => ({
       const imported = await decryptData(content, password);
       if (imported.cases) {
         setAllCasesData(imported.cases);
+        // Force the UI sliders to jump to the values in the imported file
+        if (imported.cases[activeSlot]) {
+            applyConfigToState(imported.cases[activeSlot]);
+      } 
         if (imported.legacyConfig) setLegacyConfig(imported.legacyConfig);
         if (imported.taxConfig) setTaxConfig(imported.taxConfig);
         if (imported.strategyNames) setStrategyNames(imported.strategyNames);
