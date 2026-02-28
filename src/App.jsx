@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot, Line, ComposedChart, BarChart, Bar } from 'recharts';
 import { ShieldAlert, Home, Briefcase, DollarSign, PieChart, User, Coffee, Zap, Moon, Heart, Users, Save, RefreshCw, Wallet, LogOut, Plus, LayoutDashboard, ListTree, Banknote, CreditCard, ChevronDown, Binary, Activity, Loader2, Sparkles, TableProperties, Landmark, AlertTriangle, MapPin, Target, Lock, Scale, Calculator, Printer } from 'lucide-react';
 // --- Imported Modules ---
+import ComparisonView from './components/ComparisonView';
 import { auth, db, appId, signInWithCustomToken, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, doc, setDoc, getDoc } from './services/firebase';
 import { encryptData, decryptData } from './utils/encryption';
 import { runSimulationCore, BASE_YEAR, STATE_TAX_RATES } from './engine/simulationCore';
