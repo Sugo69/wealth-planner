@@ -112,7 +112,7 @@ const App = () => {
   const [isGeneratingTaxInsight, setIsGeneratingTaxInsight] = useState(false);
 
   const fileInputRef = useRef(null);
-  
+
 // Sync Spouse SSI to 50% of Primary when rule is active
 useEffect(() => {
   if (useSpousalSsiRule) {
@@ -141,7 +141,7 @@ const currentActiveConfig = useMemo(() => ({
   desiredLegacy, numChildren, childConfigs,
   
   // Income Sources
-  hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge,
+  hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, useSpousalSsiRule,
   isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, 
   spouseSalary, spouseDuration,
   
@@ -410,7 +410,9 @@ const handleSlotChange = (newSlot) => {
        if (hasSpouse && startIdx < spouseDuration) wSalary += spouseSalary;
     }
     const ssiBase = (hasSsi && (currentAge + startIdx) >= primarySsiAge) ? primarySsiAmount : 0;
-    const spSsiBase = (hasSsi && hasSpouse && (spouseAge + startIdx) >= spouseSsiAge) ? spouseSsiAmount : 0;
+const spSsiBase = (hasSsi && hasSpouse && (spouseAge + startIdx) >= spouseSsiAge) 
+      ? (useSpousalSsiRule ? (primarySsiAmount / 2) : spouseSsiAmount) 
+      : 0;
     const baseIncome = wSalary + ssiBase + spSsiBase + investmentIncome + capitalGains;
     const stdDed = filingStatus === 'MFJ' ? 29200 : 14600;
     const baseTaxable = Math.max(0, baseIncome - stdDed);
@@ -724,23 +726,43 @@ const handleSlotChange = (newSlot) => {
               <section className="space-y-4 pt-4 border-t border-slate-100 mt-4">
                 <div className="flex justify-between items-center"><h3 className="text-xs font-bold text-sky-700 uppercase tracking-wider flex items-center gap-2 font-black"><Landmark size={14} /> Social Security</h3><button onClick={()=>setHasSsi(!hasSsi)} className={`w-8 h-4 rounded-full relative transition-colors ${hasSsi ? 'bg-sky-600' : 'bg-slate-300'}`}><div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${hasSsi ? 'left-4.5' : 'left-0.5'}`} /></button></div>
                 {hasSsi && (
-                  <div className="p-4 bg-sky-50/50 rounded-2xl border border-sky-100 space-y-4">
-                    <span className="text-[10px] font-black text-sky-800 uppercase block tracking-wider">Primary Earner</span>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Claim Age</label><StepperInput value={primarySsiAge} onChange={setPrimarySsiAge} /></div>
-                      <div><label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Annual</label><CurrencyInput value={primarySsiAmount} onChange={setPrimarySsiAmount} /></div>
-                    </div>
-                    {hasSpouse && (
-                      <div className="pt-2 border-t border-sky-100 animate-in fade-in">
-                        <span className="text-[10px] font-black text-sky-800 uppercase block tracking-wider mb-3">Spouse</span>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div><label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Claim Age</label><StepperInput value={spouseSsiAge} onChange={setSpouseSsiAge} /></div>
-                          <div><label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Annual</label><CurrencyInput value={spouseSsiAmount} onChange={setSpouseSsiAmount} /></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+  <div className="p-4 bg-sky-50/50 rounded-2xl border border-sky-100 space-y-4">
+    <span className="text-[10px] font-black text-sky-800 uppercase block tracking-wider">Primary Earner</span>
+    <div className="grid grid-cols-2 gap-3">
+      <div><label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Claim Age</label><StepperInput value={primarySsiAge} onChange={setPrimarySsiAge} /></div>
+      <div><label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Annual</label><CurrencyInput value={primarySsiAmount} onChange={setPrimarySsiAmount} /></div>
+    </div>
+    
+    {hasSpouse && (
+      <div className="pt-2 border-t border-sky-100 animate-in fade-in">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] font-black text-sky-800 uppercase block tracking-wider">Spouse</span>
+          {/* THE NEW 50% RULE TOGGLE */}
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <input 
+              type="checkbox" 
+              checked={useSpousalSsiRule} 
+              onChange={(e) => setUseSpousalSsiRule(e.target.checked)}
+              className="w-3 h-3 rounded border-sky-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+            />
+            <span className="text-[9px] font-bold text-sky-600 uppercase group-hover:text-sky-800 transition-colors">50% of Primary</span>
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Claim Age</label><StepperInput value={spouseSsiAge} onChange={setSpouseSsiAge} /></div>
+          <div>
+            <label className="block text-[8px] font-bold text-sky-600 mb-1 uppercase">Annual</label>
+            <CurrencyInput 
+              value={useSpousalSsiRule ? primarySsiAmount / 2 : spouseSsiAmount} 
+              onChange={setSpouseSsiAmount} 
+              disabled={useSpousalSsiRule} 
+            />
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
               </section>
 
               <section className="space-y-4 pt-4 border-t border-slate-100 mt-auto">
