@@ -3,46 +3,43 @@
 @tailwind utilities;
 
 @media print {
-  /* Keep the header title visible for the report name */
+  /* 1. Force Scale the entire page to fit on standard paper */
+  html, body {
+    zoom: 85%; /* This mimics the manual 85% scale setting */
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 2. Hide interactive elements */
   header nav, header .flex.items-center, aside, .lg\:col-span-1, button, footer {
     display: none !important;
   }
 
-  /* Force the layout to stay in a readable column */
-  .max-w-\[1600px\] {
-    max-width: 100% !important;
-    padding: 0 !important;
-  }
-
+  /* 3. Collapse the grid and remove massive gaps */
   .grid {
-    display: block !important; /* Stack sections vertically for paper */
+    display: block !important;
   }
 
   .lg\:col-span-3, .lg\:col-span-4, .lg\:col-span-5 {
     width: 100% !important;
-    margin-bottom: 1rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* Shrink the charts slightly so they fit better on standard 8.5x11 */
-  .h-\[520px\] {
-    height: 400px !important;
+  /* 4. Fix chart height to prevent overlapping metrics */
+  .h-\[520px\], .h-\[400px\] {
+    height: 300px !important;
+    margin-bottom: 2rem !important;
   }
 
-  /* Ensure colors and text are high-contrast for printing */
-  body {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    background: white !important;
-    font-size: 12pt !important;
-  }
-
-  /* This prevents the "weird gaps" between your cards */
+  /* 5. Style the cards to be compact and prevent splitting */
   .bg-white {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    border: 1px solid #f1f5f9 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    border: 1px solid #e2e8f0 !important;
+    margin-bottom: 1rem !important;
+    padding: 1.25rem !important;
     box-shadow: none !important;
-    margin-bottom: 1.5rem !important;
-    padding: 1.5rem !important;
   }
 }
