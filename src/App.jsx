@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot, Line, ComposedChart, BarChart, Bar } from 'recharts';
 import { ShieldAlert, Home, Briefcase, DollarSign, PieChart, User, Coffee, Zap, Moon, Heart, Users, Save, RefreshCw, Wallet, LogOut, Plus, LayoutDashboard, ListTree, Banknote, CreditCard, ChevronDown, Binary, Activity, Loader2, Sparkles, TableProperties, Landmark, AlertTriangle, MapPin, Target, Lock, Scale, Calculator, Printer } from 'lucide-react';
-// --- Imported Modules ---
 import ComparisonView from './components/ComparisonView';
+// --- Imported Modules ---
 import { auth, db, appId, signInWithCustomToken, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, doc, setDoc, getDoc } from './services/firebase';
 import { encryptData, decryptData } from './utils/encryption';
 import { runSimulationCore, BASE_YEAR, STATE_TAX_RATES } from './engine/simulationCore';
@@ -575,6 +575,7 @@ const handleSlotChange = (newSlot) => {
               <button onClick={() => setActivePage('events')} className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${activePage === 'events' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}><ListTree size={14} className="inline mr-2"/> Life Events</button>
               <button onClick={() => setActivePage('monte-carlo')} className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${activePage === 'monte-carlo' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}><Binary size={14} className="inline mr-2"/> Monte Carlo</button>
               <button onClick={() => setActivePage('tax')} className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${activePage === 'tax' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}><Landmark size={14} className="inline mr-2"/> Tax Planning</button>
+              <button onClick={() => setActivePage('comparison')} className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${activePage === 'comparison' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`} ><Scale size={14} className="inline mr-2"/> Compare</button>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -597,7 +598,14 @@ const handleSlotChange = (newSlot) => {
   </button>
 </div>
         </header>
-
+{activePage === 'comparison' && (
+  <ComparisonView 
+    allCasesData={allCasesData} 
+    mcData={mcData} 
+    strategyNames={strategyNames} 
+    formatUSD={formatUSD} 
+  />
+)}
         {activePage === 'dashboard' && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch animate-in fade-in duration-500">
             {/* Sidebar Controls */}

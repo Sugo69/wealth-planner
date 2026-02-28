@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, ShieldCheck, Landmark, ArrowRight } from 'lucide-react';
+import { TrendingUp, ShieldCheck, Landmark, ArrowRight, Target } from 'lucide-react';
 
 const ComparisonView = ({ allCasesData, mcData, strategyNames, formatUSD }) => {
   const slots = [1, 2, 3];
@@ -8,7 +8,7 @@ const ComparisonView = ({ allCasesData, mcData, strategyNames, formatUSD }) => {
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
       <div className="flex justify-between items-center mb-8 border-b pb-4">
         <h3 className="font-black text-slate-700 text-xl uppercase tracking-tight flex items-center gap-2">
-          <TrendingUp className="text-blue-600" /> Strategic Side-by-Side
+          <Target className="text-blue-600" /> Strategic Side-by-Side
         </h3>
       </div>
 
@@ -18,13 +18,13 @@ const ComparisonView = ({ allCasesData, mcData, strategyNames, formatUSD }) => {
           const mc = mcData?.[slot];
           
           if (!config) return (
-            <div key={slot} className="p-6 border-2 border-dashed border-slate-100 rounded-3xl flex items-center justify-center text-[10px] font-black text-slate-300 uppercase">
-              Empty Slot {slot}
+            <div key={slot} className="p-6 border-2 border-dashed border-slate-100 rounded-3xl flex items-center justify-center text-[10px] font-black text-slate-300 uppercase min-h-[300px]">
+              Case {slot} Empty
             </div>
           );
 
           return (
-            <div key={slot} className="relative p-6 rounded-3xl border border-slate-200 bg-slate-50/30 flex flex-col space-y-4">
+            <div key={slot} className="relative p-6 rounded-3xl border border-slate-200 bg-slate-50/30 flex flex-col space-y-4 shadow-sm hover:shadow-md transition-all">
               <div className="text-center pb-4 border-b border-slate-100">
                 <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{strategyNames[slot]}</span>
               </div>
@@ -54,10 +54,9 @@ const ComparisonView = ({ allCasesData, mcData, strategyNames, formatUSD }) => {
               </div>
 
               <div className="pt-4 mt-auto">
-                <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                   <span className="text-[8px] font-black text-slate-400 uppercase block mb-1">Estate Variance</span>
-                  <span className="text-xs font-black text-slate-600">
-                    {/* Simplified variance calculation based on available median */}
+                  <span className={`text-sm font-black ${(mc?.percentilesData?.[mc.percentilesData.length - 1]?.median || 0) - config.desiredLegacy >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {formatUSD((mc?.percentilesData?.[mc.percentilesData.length - 1]?.median || 0) - config.desiredLegacy)}
                   </span>
                 </div>
