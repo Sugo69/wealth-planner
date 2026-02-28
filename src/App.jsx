@@ -112,7 +112,13 @@ const App = () => {
   const [isGeneratingTaxInsight, setIsGeneratingTaxInsight] = useState(false);
 
   const fileInputRef = useRef(null);
-
+  
+// Sync Spouse SSI to 50% of Primary when rule is active
+useEffect(() => {
+  if (useSpousalSsiRule) {
+    setSpouseSsiAmount(primarySsiAmount / 2);
+  }
+}, [primarySsiAmount, useSpousalSsiRule]);
   
 const currentActiveConfig = useMemo(() => ({
   // Core Demographics
