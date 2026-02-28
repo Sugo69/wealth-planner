@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot, Line, ComposedChart, BarChart, Bar } from 'recharts';
-import { ShieldAlert, Home, Briefcase, DollarSign, PieChart, User, Coffee, Zap, Moon, Heart, Users, Save, RefreshCw, Wallet, LogOut, Plus, LayoutDashboard, ListTree, Banknote, CreditCard, ChevronDown, Binary, Activity, Loader2, Sparkles, TableProperties, Landmark, AlertTriangle, MapPin, Target, Lock, Scale, Calculator } from 'lucide-react';
+import { ShieldAlert, Home, Briefcase, DollarSign, PieChart, User, Coffee, Zap, Moon, Heart, Users, Save, RefreshCw, Wallet, LogOut, Plus, LayoutDashboard, ListTree, Banknote, CreditCard, ChevronDown, Binary, Activity, Loader2, Sparkles, TableProperties, Landmark, AlertTriangle, MapPin, Target, Lock, Scale, Calculator, Printer } from 'lucide-react';
 // --- Imported Modules ---
 import { auth, db, appId, signInWithCustomToken, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, doc, setDoc, getDoc } from './services/firebase';
 import { encryptData, decryptData } from './utils/encryption';
@@ -470,12 +470,24 @@ const App = () => {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-             {user ? (
-               <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm"><div className="text-right text-[10px] font-bold text-slate-500">{user.email || 'Private User'}</div><button onClick={() => signOut(auth)} className="p-2 text-slate-400 hover:text-red-500"><LogOut size={16}/></button></div>
-             ) : (
-               <button onClick={async () => { const p = new GoogleAuthProvider(); await signInWithPopup(auth, p); }} className="bg-white px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all">Connect Profile</button>
-             )}
-          </div>
+  {user ? (
+    <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+      <div className="text-right text-[10px] font-bold text-slate-500">{user.email || 'Private User'}</div>
+      <button onClick={() => signOut(auth)} className="p-2 text-slate-400 hover:text-red-500"><LogOut size={16}/></button>
+    </div>
+  ) : (
+    <button onClick={async () => { const p = new GoogleAuthProvider(); await signInWithPopup(auth, p); }} className="bg-white px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm font-bold text-sm text-slate-600 hover:bg-slate-50 transition-all">
+      Connect Profile
+    </button>
+  )}
+  {/* The Print button now sits outside the logic so it always appears */}
+  <button 
+    onClick={() => window.print()} 
+    className="bg-slate-800 text-white px-5 py-2.5 rounded-xl border border-slate-700 shadow-sm font-bold text-sm hover:bg-slate-900 transition-all ml-3 flex items-center gap-2"
+  >
+    <Printer size={16}/> Print Report
+  </button>
+</div>
         </header>
 
         {activePage === 'dashboard' && (

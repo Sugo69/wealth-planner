@@ -1,3 +1,48 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  /* Keep the header title visible for the report name */
+  header nav, header .flex.items-center, aside, .lg\:col-span-1, button, footer {
+    display: none !important;
+  }
+
+  /* Force the layout to stay in a readable column */
+  .max-w-\[1600px\] {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .grid {
+    display: block !important; /* Stack sections vertically for paper */
+  }
+
+  .lg\:col-span-3, .lg\:col-span-4, .lg\:col-span-5 {
+    width: 100% !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* Shrink the charts slightly so they fit better on standard 8.5x11 */
+  .h-\[520px\] {
+    height: 400px !important;
+  }
+
+  /* Ensure colors and text are high-contrast for printing */
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: white !important;
+    font-size: 12pt !important;
+  }
+
+  /* This prevents the "weird gaps" between your cards */
+  .bg-white {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #f1f5f9 !important;
+    box-shadow: none !important;
+    margin-bottom: 1.5rem !important;
+    padding: 1.5rem !important;
+  }
+}
