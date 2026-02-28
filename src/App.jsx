@@ -75,6 +75,7 @@ const App = () => {
   const [primarySsiAge, setPrimarySsiAge] = useState(defaultConfig.primarySsiAge);
   const [spouseSsiAmount, setSpouseSsiAmount] = useState(defaultConfig.spouseSsiAmount);
   const [spouseSsiAge, setSpouseSsiAge] = useState(defaultConfig.spouseSsiAge);
+  const [useSpousalSsiRule, setUseSpousalSsiRule] = useState(false);
   const [isWorking, setIsWorking] = useState(defaultConfig.isWorking);
   const [phase1Salary, setPhase1Salary] = useState(defaultConfig.phase1Salary); 
   const [phase1Duration, setPhase1Duration] = useState(defaultConfig.phase1Duration);
@@ -300,58 +301,46 @@ const handleSlotChange = (newSlot) => {
   };
 
  const processExport = async (password) => {
-    // 1. Capture the "Live" screen data into the Master List before saving
-    // This ensures Case 1, 2, or 3 reflects your most recent slider movements
-    const latestAllCases = { 
-      ...allCasesData, 
-      [activeSlot]: { ...currentActiveConfig } 
-    };
-
-    // 2. Build the complete export bundle
-    const exportData = { 
-      cases: latestAllCases, 
-      events: globalEvents, 
-      strategyNames: strategyNames,
-      // Include the standalone configs so they restore correctly on import
-      legacyConfig: legacyConfig || {}, 
-      taxConfig: taxConfig || {},
-      appVersion: "5.4",
-      exportDate: new Date().toISOString()
-    };
-
     try {
-      // 3. Encrypt the bundle
+      // 1. Sync the current screen into the master cases list
+      const latestAllCases = { 
+        ...allCasesData, 
+        [activeSlot]: { ...currentActiveConfig } 
+      };
+
+      // 2. Build the data bundle using your actual state names
+      const exportData = { 
+        cases: latestAllCases, 
+        events: globalEvents, 
+        strategyNames: strategyNames,
+        // Using the exact variables from your App.jsx state
+        legacySettings: { desiredLegacy, numChildren, childConfigs },
+        taxSettings: { filingStatus, currentState, destinationState, relocationYear },
+        appVersion: "5.4"
+      };
+
+      // 3. Encrypt and Trigger Download
       const fileContent = await encryptData(exportData, password);
-      
-      // 4. Create the download trigger
-      const blob = new Blob([fileContent], { 
-        type: password ? 'text/plain' : 'application/json' 
-      });
+      const blob = new Blob([fileContent], { type: password ? 'text/plain' : 'application/json' });
       const url = URL.createObjectURL(blob); 
       const a = document.createElement('a'); 
       a.href = url; 
-      
-      // Filename includes timestamp and security type
-      const timestamp = new Date().getTime();
-      const extension = password ? 'enc' : 'json';
-      a.download = `WealthPlan_v5.4_${timestamp}.${extension}`; 
+      a.download = `WealthPlan_v5.4_${new Date().getTime()}.${password ? 'enc' : 'json'}`; 
       
       document.body.appendChild(a); 
       a.click(); 
       document.body.removeChild(a);
       
-      // 5. Close the modal and reset state
+      // 4. Close the modal
       setExportModal({ isOpen: false, tempKey: '' });
-      
-      // Optional: Update the master list in state so the app stays in sync
       setAllCasesData(latestAllCases);
 
     } catch(err) { 
-      console.error("Export Failed:", err);
-      alert("Encryption failed. Please check your password and try again.");
+      console.error("Export Error:", err);
+      // This will tell you exactly why the button "froze"
+      alert("Export failed. Check the console for details.");
     }
   };
-
   const processImport = async (content, password) => {
     try {
       const imported = await decryptData(content, password);
