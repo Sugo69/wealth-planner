@@ -114,34 +114,47 @@ const App = () => {
 
   
 const currentActiveConfig = useMemo(() => ({
-  // Demographics & Assets
+  // Core Demographics
   currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, 
+  
+  // Financial Assets
   portfolioValue, rothBalance, iraBalance, growthRate,
   
-  // Housing
+  // Real Estate
   homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, 
   replacementHomeValue, homeSaleFee,
   
-  // Tech Disruption
+  // Tech Disruption & Risk
   perezIntensity, perezCalendarYear,
   
-  // Spending (MISSING IN YOUR CURRENT CODE)
+  // Spending Tiers (The missing links)
   goGoSpend, goGoDuration, slowGoSpend, slowGoDuration, noGoSpend,
   
-  // Legacy & Children (MISSING IN YOUR CURRENT CODE)
+  // Legacy & Family
   desiredLegacy, numChildren, childConfigs,
   
-  // SSI & Workforce (MISSING IN YOUR CURRENT CODE)
+  // Income Sources
   hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge,
   isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, 
   spouseSalary, spouseDuration,
   
-  // Tax & Relocation
+  // Tax Strategy
   filingStatus, currentState, destinationState, relocationYear, 
   investmentIncome, capitalGains, rothConversionStrategy, 
   annualConversionAmount, conversionStartYear, conversionDuration, 
   targetMarginalBracket
-}), [currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, perezIntensity, perezCalendarYear, portfolioValue, rothBalance, iraBalance, growthRate, homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, replacementHomeValue, homeSaleFee, goGoSpend, goGoDuration, slowGoSpend, slowGoDuration, noGoSpend, desiredLegacy, numChildren, childConfigs, hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, spouseSalary, spouseDuration, filingStatus, currentState, destinationState, relocationYear, investmentIncome, capitalGains, rothConversionStrategy, annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket]);
+}), [
+  currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, 
+  perezIntensity, perezCalendarYear, portfolioValue, rothBalance, iraBalance, 
+  growthRate, homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, 
+  replacementHomeValue, homeSaleFee, goGoSpend, goGoDuration, slowGoSpend, 
+  slowGoDuration, noGoSpend, desiredLegacy, numChildren, childConfigs, 
+  hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, 
+  isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, 
+  spouseSalary, spouseDuration, filingStatus, currentState, destinationState, 
+  relocationYear, investmentIncome, capitalGains, rothConversionStrategy, 
+  annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket
+]);
 
   const applyConfigToState = useCallback((data) => {
     if (!data) return;
