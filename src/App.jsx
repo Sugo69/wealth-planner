@@ -112,9 +112,36 @@ const App = () => {
 
   const fileInputRef = useRef(null);
 
-  const currentActiveConfig = useMemo(() => ({
-    currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, perezIntensity, perezCalendarYear, portfolioValue, rothBalance, iraBalance, growthRate, homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, replacementHomeValue, homeSaleFee, goGoSpend, goGoDuration, slowGoSpend, slowGoDuration, noGoSpend, desiredLegacy, numChildren, childConfigs, hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, spouseSalary, spouseDuration, filingStatus, currentState, destinationState, relocationYear, investmentIncome, capitalGains, rothConversionStrategy, annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket
-  }), [currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, perezIntensity, perezCalendarYear, portfolioValue, rothBalance, iraBalance, growthRate, homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, replacementHomeValue, homeSaleFee, goGoSpend, goGoDuration, slowGoSpend, slowGoDuration, noGoSpend, desiredLegacy, numChildren, childConfigs, hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, spouseSalary, spouseDuration, filingStatus, currentState, destinationState, relocationYear, investmentIncome, capitalGains, rothConversionStrategy, annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket]);
+  
+const currentActiveConfig = useMemo(() => ({
+  // Demographics & Assets
+  currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, 
+  portfolioValue, rothBalance, iraBalance, growthRate,
+  
+  // Housing
+  homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, 
+  replacementHomeValue, homeSaleFee,
+  
+  // Tech Disruption
+  perezIntensity, perezCalendarYear,
+  
+  // Spending (MISSING IN YOUR CURRENT CODE)
+  goGoSpend, goGoDuration, slowGoSpend, slowGoDuration, noGoSpend,
+  
+  // Legacy & Children (MISSING IN YOUR CURRENT CODE)
+  desiredLegacy, numChildren, childConfigs,
+  
+  // SSI & Workforce (MISSING IN YOUR CURRENT CODE)
+  hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge,
+  isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, 
+  spouseSalary, spouseDuration,
+  
+  // Tax & Relocation
+  filingStatus, currentState, destinationState, relocationYear, 
+  investmentIncome, capitalGains, rothConversionStrategy, 
+  annualConversionAmount, conversionStartYear, conversionDuration, 
+  targetMarginalBracket
+}), [currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, perezIntensity, perezCalendarYear, portfolioValue, rothBalance, iraBalance, growthRate, homeValue, homeAppreciation, isDownsizing, downsizeCalendarYear, replacementHomeValue, homeSaleFee, goGoSpend, goGoDuration, slowGoSpend, slowGoDuration, noGoSpend, desiredLegacy, numChildren, childConfigs, hasSsi, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, isWorking, phase1Salary, phase1Duration, phase2Salary, phase2Duration, spouseSalary, spouseDuration, filingStatus, currentState, destinationState, relocationYear, investmentIncome, capitalGains, rothConversionStrategy, annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket]);
 
   const applyConfigToState = useCallback((data) => {
     if (!data) return;
