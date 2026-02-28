@@ -241,24 +241,42 @@ const currentActiveConfig = useMemo(() => ({
   }, [user, activeSlot, applyConfigToState]);
 
   const saveCurrentStrategy = useCallback(async (slotOverride = null) => {
-    if (!user) return;
-    setSaveStatus('saving');
-    const target = slotOverride || activeSlot;
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'saved_strategies', target.toString()), { ...currentActiveConfig, updatedAt: new Date().toISOString() });
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'metadata', 'strategy_names'), strategyNames);
-      await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'metadata', 'global_events'), { events: globalEvents });
-      setAllCasesData(prev => ({...prev, [target]: currentActiveConfig}));
-      setSavedGlobalEvents(globalEvents);
-      setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (e) { setSaveStatus('error'); }
-  }, [user, activeSlot, currentActiveConfig, strategyNames, globalEvents]);
+  if (!user) return;
+  setSaveStatus('saving'); // 1. Changes button to "Syncing..."
+  const target = slotOverride || activeSlot;
+  try {
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'saved_strategies', target.toString()), { 
+      ...currentActiveConfig, 
+      updatedAt: new Date().toISOString() 
+    });
+    
+    // ... keep your strategyNames and globalEvents setDoc lines here ...
 
-  const handleSlotChange = (newSlot) => { 
+    setAllCasesData(prev => ({...prev, [target]: currentActiveConfig}));
+    setSavedGlobalEvents(globalEvents);
+    
+    setSaveStatus('saved'); // 2. Changes button to "Saved" (Green)
+    setTimeout(() => setSaveStatus('idle'), 2000); // 3. Reverts to "Save Strategy"
+  } catch (e) { 
+    setSaveStatus('error'); 
+  }
+}, [user, activeSlot, currentActiveConfig, strategyNames, globalEvents]);
+
+const handleSlotChange = (newSlot) => { 
   if (activeSlot !== newSlot) { 
-    // Capture current work into the master list before moving
-    setAllCasesData(prev => ({...prev, [activeSlot]: currentActiveConfig}));
+    // 1. Save current slider positions into the Master List for the OLD slot
+    setAllCasesData(prev => ({
+      ...prev, 
+      [activeSlot]: { ...currentActiveConfig } 
+    }));
+
+    // 2. Change the active slot
     setActiveSlot(newSlot); 
+
+    // 3. Force the sliders to jump to the values stored in the NEW slot
+    // If the new slot is empty, use the default values
+    const nextData = allCasesData[newSlot] || defaultConfig;
+    applyConfigToState(nextData);
   } 
 };
     
