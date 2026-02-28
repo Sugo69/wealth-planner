@@ -299,19 +299,57 @@ const handleSlotChange = (newSlot) => {
     setTargetMarginalBracket(defaultConfig.targetMarginalBracket);
   };
 
-  // --- Secure Export/Import ---
-  const processExport = async (password) => {
-    const fullCases = { ...allCasesData, [activeSlot]: currentActiveConfig };
-    const exportData = { cases: fullCases, events: globalEvents, strategyNames: strategyNames };
+ const processExport = async (password) => {
+    // 1. Capture the "Live" screen data into the Master List before saving
+    // This ensures Case 1, 2, or 3 reflects your most recent slider movements
+    const latestAllCases = { 
+      ...allCasesData, 
+      [activeSlot]: { ...currentActiveConfig } 
+    };
+
+    // 2. Build the complete export bundle
+    const exportData = { 
+      cases: latestAllCases, 
+      events: globalEvents, 
+      strategyNames: strategyNames,
+      // Include the standalone configs so they restore correctly on import
+      legacyConfig: legacyConfig || {}, 
+      taxConfig: taxConfig || {},
+      appVersion: "5.4",
+      exportDate: new Date().toISOString()
+    };
+
     try {
+      // 3. Encrypt the bundle
       const fileContent = await encryptData(exportData, password);
-      const blob = new Blob([fileContent], { type: password ? 'text/plain' : 'application/json' });
+      
+      // 4. Create the download trigger
+      const blob = new Blob([fileContent], { 
+        type: password ? 'text/plain' : 'application/json' 
+      });
       const url = URL.createObjectURL(blob); 
-      const a = document.createElement('a'); a.href = url; 
-      a.download = `WealthPlan_v5_${new Date().getTime()}.${password ? 'enc' : 'json'}`; 
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      const a = document.createElement('a'); 
+      a.href = url; 
+      
+      // Filename includes timestamp and security type
+      const timestamp = new Date().getTime();
+      const extension = password ? 'enc' : 'json';
+      a.download = `WealthPlan_v5.4_${timestamp}.${extension}`; 
+      
+      document.body.appendChild(a); 
+      a.click(); 
+      document.body.removeChild(a);
+      
+      // 5. Close the modal and reset state
       setExportModal({ isOpen: false, tempKey: '' });
-    } catch(err) { console.error("Export Failed", err); }
+      
+      // Optional: Update the master list in state so the app stays in sync
+      setAllCasesData(latestAllCases);
+
+    } catch(err) { 
+      console.error("Export Failed:", err);
+      alert("Encryption failed. Please check your password and try again.");
+    }
   };
 
   const processImport = async (content, password) => {
