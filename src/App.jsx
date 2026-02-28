@@ -255,6 +255,8 @@ const App = () => {
       const imported = await decryptData(content, password);
       if (imported.cases) {
         setAllCasesData(imported.cases);
+        if (imported.legacyConfig) setLegacyConfig(imported.legacyConfig);
+        if (imported.taxConfig) setTaxConfig(imported.taxConfig);
         if (imported.strategyNames) setStrategyNames(imported.strategyNames);
         if (imported.events) setGlobalEvents(imported.events);
         if (user) {
@@ -289,7 +291,7 @@ const App = () => {
     event.target.value = null;
   };
 
-  // --- Simulation Execution ---
+  // --- Simulation Execution --- 
   const simulationResult = useMemo(() => {
     const activeEvents = globalEvents.filter(e => e.applicableSlots?.includes(activeSlot) ?? true);
     return runSimulationCore(currentActiveConfig, activeEvents, false);
