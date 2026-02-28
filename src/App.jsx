@@ -189,6 +189,7 @@ const currentActiveConfig = useMemo(() => ({
     setNoGoSpend(data.noGoSpend ?? defaultConfig.noGoSpend);
     setDesiredLegacy(data.desiredLegacy ?? defaultConfig.desiredLegacy);
     setNumChildren(data.numChildren ?? defaultConfig.numChildren);
+    setUseSpousalSsiRule(data.useSpousalSsiRule ?? false);
 
     const importedChildren = data.childConfigs || [];
     const paddedChildren = defaultConfig.childConfigs.map((defaultChild, index) => importedChildren[index] ? importedChildren[index] : defaultChild);
