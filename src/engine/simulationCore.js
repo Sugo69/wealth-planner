@@ -2,13 +2,10 @@
 export const BASE_YEAR = 2026;
 export const INFLATION_RATE = 0.03;
 
-// IRS RMD Uniform Lifetime Table (Age 73+)
+export const SSI_MULT_PRIMARY = { 62: 0.70, 63: 0.75, 64: 0.80, 65: 0.8667, 66: 0.9333, 67: 1.00, 68: 1.08, 69: 1.16, 70: 1.24 };
+export const SSI_MULT_SPOUSAL = { 62: 0.325, 63: 0.35, 64: 0.375, 65: 0.4167, 66: 0.4583, 67: 0.50, 68: 0.50, 69: 0.50, 70: 0.50 };
 export const RMD_TABLE = { 73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1, 80: 20.2, 81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4, 88: 13.7, 89: 12.9, 90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5, 95: 8.9 };
-
-// --- State Tax Data ---
-export const STATE_TAX_RATES = {
-  "WA": 0.0, "UT": 4.55, "CA": 9.3, "NY": 6.85, "FL": 0.0, "TX": 0.0
-};
+export const STATE_TAX_RATES = { "WA": 0.0, "UT": 4.55, "CA": 9.3, "NY": 6.85, "FL": 0.0, "TX": 0.0 };
 
 export const generateNormalRandom = (mean, stdDev) => {
   const u1 = Math.random(), u2 = Math.random();
@@ -17,53 +14,79 @@ export const generateNormalRandom = (mean, stdDev) => {
 };
 
 export const runSimulationCore = (config, events, isMonteCarlo = false, mcSettings = null) => {
-  const { currentAge, lifeExpectancy, hasSpouse, spouseAge, spouseLifeExpectancy, portfolioValue, rothBalance, iraBalance, growthRate, homeValue, homeAppreciation, goGoSpend, goGoDuration, slowGoSpend, slowGoDuration, noGoSpend, primarySsiAmount, primarySsiAge, spouseSsiAmount, spouseSsiAge, phase1Salary, phase1Duration, phase2Salary, phase2Duration, spouseSalary, spouseDuration, isWorking, filingStatus, currentState, destinationState, relocationYear, investmentIncome, capitalGains, rothConversionStrategy, annualConversionAmount, conversionStartYear, conversionDuration, targetMarginalBracket, perezIntensity, perezCalendarYear, isDownsizing, downsizeCalendarYear, replacementHomeValue, homeSaleFee, numChildren, childConfigs, hasSsi } = config;
+  const { 
+    birthYear, spouseBirthYear, targetRetirementYear, spouseTargetRetirementYear,
+    primaryIsWorking, spouseIsWorking, primaryBonus, spouseBonus, 
+    primary401kPreTax, primary401kRoth, primary401kMatch, primary401kMatchMax,
+    spouse401kPreTax, spouse401kRoth, spouse401kMatch, spouse401kMatchMax,
+    lifeExpectancy, hasSpouse, spouseLifeExpectancy, 
+    checkingBalance, savingsBalance, debts,
+    portfolioValue, rothBalance, iraBalance, fourOhOneK, hsaBalance,
+    growthRate, homeValue, homeAppreciation, goGoSpend, goGoDuration, 
+    slowGoSpend, slowGoDuration, noGoSpend, 
+    primarySsiAmount, primarySsiAge, spouseSsiAge, spouseSsiAmount, useSpousalSsiRule, 
+    phase1Salary, spouseSalary, filingStatus, currentState, destinationState, relocationYear, investmentIncome, 
+    capitalGains, perezIntensity, perezCalendarYear, 
+    isDownsizing, downsizeCalendarYear, replacementHomeValue, homeSaleFee, hasSsi,
+    annualConversionAmount, conversionStartYear, conversionDuration // New Roth Variables
+  } = config;
 
+  const pBirthYear = birthYear || 1970;
+  const sBirthYear = spouseBirthYear || 1970;
+  const currentAge = BASE_YEAR - pBirthYear;
+  const spouseAge = BASE_YEAR - sBirthYear;
+  const rmdStartAge = pBirthYear >= 1960 ? 75 : 73;
+
+  let curCash = (checkingBalance || 0) + (savingsBalance || 0);
   let curIra = iraBalance || 0, curRoth = rothBalance || 0, curBrokerage = portfolioValue || 0, curHome = homeValue || 0;
-  const maxHorizon = hasSpouse ? Math.max(lifeExpectancy, currentAge + (spouseLifeExpectancy - spouseAge)) : lifeExpectancy;
+  let cur401k = fourOhOneK || 0, curHsa = hsaBalance || 0;
+  let activeDebts = (debts || []).map(d => ({ ...d }));
+
+  const maxHorizon = hasSpouse ? Math.max(lifeExpectancy || 95, currentAge + ((spouseLifeExpectancy || 95) - spouseAge)) : (lifeExpectancy || 95);
   const totalMonths = Math.max(0, (maxHorizon - currentAge) * 12);
   
-  // Secure 2.0 RMD Age (Simplification for model: 73 if born 1951-1959, 75 if >= 1960)
-  const birthYear = BASE_YEAR - currentAge;
-  const rmdStartAge = birthYear >= 1960 ? 75 : 73;
-
   let path = [], annualTaxData = [], totalRmd = 0, totalTax = 0, irmaaYears = 0, totalSsiIncome = 0, totalBridgeIncome = 0, totalHomeTransactionNet = 0;
   let perezPoint = null, downsizePoint = null, childGiftPoints = [], retirementPoint = null, customEventPoints = [], primarySsiPoint = null, spouseSsiPoint = null;
-
-  const targetPerezMonth = (perezCalendarYear - BASE_YEAR) * 12;
 
   for (let month = 0; month <= totalMonths; month++) {
     const yrNum = month / 12, calYr = BASE_YEAR + Math.floor(yrNum), age = parseFloat((currentAge + yrNum).toFixed(1));
     let growth = isMonteCarlo && mcSettings ? generateNormalRandom(growthRate / 100, mcSettings.mcVolatility / 100) : growthRate / 100;
+    
     const mGrowth = Math.pow(1 + growth, 1 / 12) - 1;
     const mHomeGrowth = Math.pow(1 + (homeAppreciation / 100), 1 / 12) - 1;
+    const mCashGrowth = Math.pow(1 + 0.01, 1 / 12) - 1;
 
-    // Compound
-    curIra *= (1 + mGrowth); curRoth *= (1 + mGrowth); curBrokerage *= (1 + mGrowth); curHome *= (1 + mHomeGrowth);
+    curCash *= (1 + mCashGrowth);
+    curIra *= (1 + mGrowth); curRoth *= (1 + mGrowth); curBrokerage *= (1 + mGrowth); 
+    cur401k *= (1 + mGrowth); curHsa *= (1 + mGrowth); curHome *= (1 + mHomeGrowth);
 
-    // Perez Reset
-    if (month === targetPerezMonth && perezIntensity > 0) {
-      curIra *= (1 - perezIntensity / 100); curRoth *= (1 - perezIntensity / 100); curBrokerage *= (1 - perezIntensity / 100); curHome *= (1 - perezIntensity / 100);
-      if (!isMonteCarlo) perezPoint = { age, balance: Math.round(curIra + curRoth + curBrokerage) };
+    if (month === (perezCalendarYear - BASE_YEAR) * 12 && perezIntensity > 0) {
+      curCash *= (1 - perezIntensity / 100); curIra *= (1 - perezIntensity / 100); curRoth *= (1 - perezIntensity / 100); 
+      curBrokerage *= (1 - perezIntensity / 100); cur401k *= (1 - perezIntensity / 100); curHsa *= (1 - perezIntensity / 100); curHome *= (1 - perezIntensity / 100);
+      if (!isMonteCarlo) perezPoint = { age, balance: Math.round(curCash + curIra + cur401k + curHsa + curRoth + curBrokerage) };
     }
 
-    // Relocation & Downsize
-    const taxState = calYr >= relocationYear ? destinationState : currentState;
+    const taxState = calYr >= (relocationYear || 2099) ? destinationState : currentState;
     const sRate = STATE_TAX_RATES[taxState] / 100;
 
     if (isDownsizing && month === (downsizeCalendarYear - BASE_YEAR) * 12) {
       const netSaleProceeds = curHome * (1 - (homeSaleFee || 0) / 100);
       const transactionImpact = netSaleProceeds - replacementHomeValue;
       curBrokerage += transactionImpact; totalHomeTransactionNet += transactionImpact; curHome = replacementHomeValue;
-      if (!isMonteCarlo) downsizePoint = { age, balance: Math.round(curIra + curRoth + curBrokerage) };
+      activeDebts = activeDebts.map(d => d.type === 'Mortgage' ? { ...d, balance: 0 } : d);
+      if (!isMonteCarlo) downsizePoint = { age, balance: Math.round(curCash + curIra + cur401k + curHsa + curRoth + curBrokerage) };
     }
 
-    // Child Grants & Custom Events
-    childConfigs.slice(0, numChildren).forEach(child => {
-      if (month === (child.grantCalendarYear - BASE_YEAR) * 12) {
-        curBrokerage -= (child.giftAmount || 0);
-        if (!isMonteCarlo && child.giftAmount > 0) childGiftPoints.push({ age, balance: Math.round(curIra + curRoth + curBrokerage) });
+    let totalDebtPaymentThisMonth = 0;
+    let currentTotalDebt = 0;
+    activeDebts.forEach(debt => {
+      if (debt.balance > 0) {
+        const monthlyInterest = debt.balance * ((debt.interestRate || 0) / 100 / 12);
+        const actualPayment = Math.min(debt.balance + monthlyInterest, debt.monthlyPayment || 0);
+        debt.balance -= (actualPayment - monthlyInterest);
+        totalDebtPaymentThisMonth += actualPayment;
       }
+      currentTotalDebt += Math.max(0, debt.balance);
     });
 
     events.forEach(event => {
@@ -76,130 +99,176 @@ export const runSimulationCore = (config, events, isMonteCarlo = false, mcSettin
         if (month >= startMonth && month <= endMonth && (month - startMonth) % freqMonths === 0) eventActive = true;
       }
       if (eventActive) {
-        if (event.type === 'income') curBrokerage += event.amount; else curBrokerage -= event.amount;
-        if (!isMonteCarlo) customEventPoints.push({ age, balance: Math.round(curIra + curRoth + curBrokerage), type: event.type });
+        if (event.type === 'income') curCash += event.amount; else curBrokerage -= event.amount; 
+        if (!isMonteCarlo) customEventPoints.push({ age, balance: Math.round(curCash + curIra + cur401k + curHsa + curRoth + curBrokerage), type: event.type });
       }
     });
 
-    // RMD logic (SECURE 2.0)
     let rmdThisMonth = 0;
     if (month > 0 && month % 12 === 0 && Math.floor(age) >= rmdStartAge) {
-      rmdThisMonth = curIra / (RMD_TABLE[Math.floor(age)] || 10);
-      curIra -= rmdThisMonth; curBrokerage += rmdThisMonth; totalRmd += rmdThisMonth;
+      const totalPreTax = curIra + cur401k;
+      if (totalPreTax > 0) {
+        rmdThisMonth = totalPreTax / (RMD_TABLE[Math.floor(age)] || 10);
+        const iraShare = curIra / totalPreTax;
+        curIra -= (rmdThisMonth * iraShare);
+        cur401k -= (rmdThisMonth * (1 - iraShare));
+        curCash += rmdThisMonth;
+        totalRmd += rmdThisMonth;
+      }
     }
 
-    // Income (Wages, SSI, Investments)
+    // --- STRATEGIC ROTH CONVERSIONS ---
+    let rothConvThisMonth = 0;
+    const convStart = conversionStartYear || BASE_YEAR;
+    const convEnd = convStart + (conversionDuration || 0);
+    
+    if (calYr >= convStart && calYr < convEnd) {
+      const targetMonthlyConv = (annualConversionAmount || 0) / 12;
+      
+      // Pull from IRA first, then 401k if needed
+      let remainingConv = targetMonthlyConv;
+      
+      const iraPull = Math.min(remainingConv, curIra);
+      curIra -= iraPull;
+      remainingConv -= iraPull;
+      
+      const kPull = Math.min(remainingConv, cur401k);
+      cur401k -= kPull;
+      remainingConv -= kPull;
+      
+      rothConvThisMonth = targetMonthlyConv - remainingConv;
+      curRoth += rothConvThisMonth;
+    }
+
     let mInc = 0;
+    
     if (hasSsi) {
-      if (age >= primarySsiAge) { mInc += (primarySsiAmount / 12); if (!isMonteCarlo && !primarySsiPoint) primarySsiPoint = { age, balance: Math.round(curIra + curRoth + curBrokerage) }; }
-      if (hasSpouse && (spouseAge + yrNum) >= spouseSsiAge) { mInc += (spouseSsiAmount / 12); if (!isMonteCarlo && !spouseSsiPoint) spouseSsiPoint = { age, balance: Math.round(curIra + curRoth + curBrokerage) }; }
+      const pSsiMultAge = Math.min(70, Math.max(62, primarySsiAge || 67));
+      const sSsiMultAge = Math.min(70, Math.max(62, spouseSsiAge || 67));
+      const primaryActive = age >= (primarySsiAge || 67);
+      const spouseActualAge = spouseAge + yrNum;
+      const spouseActive = hasSpouse && (spouseActualAge >= (spouseSsiAge || 67));
+
+      let pSsiActual = 0, spSsiActual = 0;
+
+      if (primaryActive) {
+        pSsiActual = (primarySsiAmount || 0) * (SSI_MULT_PRIMARY[pSsiMultAge] || 1);
+        mInc += (pSsiActual / 12);
+        if (!isMonteCarlo && !primarySsiPoint) primarySsiPoint = { age, balance: Math.round(curCash + curIra + cur401k + curHsa + curRoth + curBrokerage) };
+      }
+
+      if (spouseActive) {
+        const isSpousalRule = useSpousalSsiRule !== false; 
+        if (isSpousalRule && primaryActive) spSsiActual = (primarySsiAmount || 0) * (SSI_MULT_SPOUSAL[sSsiMultAge] || 0.5);
+        else if (!isSpousalRule) spSsiActual = (spouseSsiAmount || 0) * (SSI_MULT_PRIMARY[sSsiMultAge] || 1);
+        mInc += (spSsiActual / 12);
+        if (spSsiActual > 0 && !isMonteCarlo && !spouseSsiPoint) spouseSsiPoint = { age, balance: Math.round(curCash + curIra + cur401k + curHsa + curRoth + curBrokerage) };
+      }
+      if (!isMonteCarlo) totalSsiIncome += ((pSsiActual + spSsiActual) / 12);
     }
     
-    if (isWorking) {
-      if (yrNum < phase1Duration) mInc += phase1Salary / 12;
-      else if (yrNum < phase1Duration + phase2Duration) mInc += phase2Salary / 12;
-      if (hasSpouse && yrNum < spouseDuration) mInc += spouseSalary / 12;
-      if (!isMonteCarlo) {
-         if (month === Math.round(Math.max(phase1Duration + phase2Duration, hasSpouse ? spouseDuration : 0) * 12)) retirementPoint = { age, balance: Math.round(curIra + curRoth + curBrokerage) };
-      }
-    }
+    // INSTITUTIONAL 401K & MATCHING LOGIC
+    let pRothAdd = 0, sRothAdd = 0;
 
-    // Additional investment income explicitly pulled into the model
-    mInc += (investmentIncome + capitalGains) / 12;
+    if (primaryIsWorking && calYr <= (targetRetirementYear || BASE_YEAR)) {
+       const pGross = ((phase1Salary || 0) + (primaryBonus || 0)) / 12;
+       const pPreTaxAdd = pGross * ((primary401kPreTax || 0) / 100);
+       pRothAdd = pGross * ((primary401kRoth || 0) / 100);
+       
+       const pEmployeeTotalContrib = pPreTaxAdd + pRothAdd;
+       const pTheoreticalMatch = pEmployeeTotalContrib * ((primary401kMatch || 0) / 100);
+       const pMonthlyMatchMax = primary401kMatchMax ? (primary401kMatchMax / 12) : Infinity;
+       const pMatchAdd = Math.min(pTheoreticalMatch, pMonthlyMatchMax);
+       
+       cur401k += (pPreTaxAdd + pMatchAdd);
+       curRoth += pRothAdd;
+       mInc += (pGross - pPreTaxAdd);
+       
+       if (!isMonteCarlo && calYr === targetRetirementYear && month % 12 === 0) retirementPoint = { age, balance: Math.round(curCash + curIra + cur401k + curHsa + curRoth + curBrokerage) };
+    }
     
-    if (!isMonteCarlo) { totalSsiIncome += (hasSsi && age >= primarySsiAge ? primarySsiAmount/12 : 0); totalBridgeIncome += mInc; }
-
-    // Roth Conversions (Only converted from IRA to Roth. Tax is paid via Brokerage later).
-    let convThisMonth = 0;
-    if (calYr >= conversionStartYear && calYr < (conversionStartYear + conversionDuration)) {
-      if (month % 12 === 0 && curIra > 0) {
-        if (rothConversionStrategy === 'annual') {
-          convThisMonth = Math.min(curIra, annualConversionAmount);
-        } else if (rothConversionStrategy === 'bracket') {
-          const expectedAnnualIncome = (mInc * 12) + rmdThisMonth;
-          const stdDed = filingStatus === 'MFJ' ? (calYr >= 2026 ? 15000 : 29200) : (calYr >= 2026 ? 7500 : 14600);
-          const baseTaxable = Math.max(0, expectedAnnualIncome - stdDed);
-          
-          let bracketCeiling = 0;
-          if (targetMarginalBracket === 22) bracketCeiling = filingStatus === 'MFJ' ? 201050 : 100525;
-          else if (targetMarginalBracket === 24) bracketCeiling = filingStatus === 'MFJ' ? 383900 : 191950;
-          
-          let room = Math.max(0, bracketCeiling - baseTaxable);
-          convThisMonth = Math.min(curIra, room);
-        }
-        curIra -= convThisMonth; curRoth += convThisMonth;
-      }
+    if (hasSpouse && spouseIsWorking && calYr <= (spouseTargetRetirementYear || BASE_YEAR)) {
+       const sGross = ((spouseSalary || 0) + (spouseBonus || 0)) / 12;
+       const sPreTaxAdd = sGross * ((spouse401kPreTax || 0) / 100);
+       sRothAdd = sGross * ((spouse401kRoth || 0) / 100);
+       
+       const sEmployeeTotalContrib = sPreTaxAdd + sRothAdd;
+       const sTheoreticalMatch = sEmployeeTotalContrib * ((spouse401kMatch || 0) / 100);
+       const sMonthlyMatchMax = spouse401kMatchMax ? (spouse401kMatchMax / 12) : Infinity;
+       const sMatchAdd = Math.min(sTheoreticalMatch, sMonthlyMatchMax);
+       
+       cur401k += (sPreTaxAdd + sMatchAdd);
+       curRoth += sRothAdd;
+       mInc += (sGross - sPreTaxAdd);
     }
 
-    let spendMultiplier = 1;
-    if (isMonteCarlo && mcSettings) {
-       const annualInflationVariance = generateNormalRandom(0, mcSettings.mcInflationStd / 100);
-       spendMultiplier = Math.pow(1 + annualInflationVariance, yrNum);
+    mInc += ((investmentIncome || 0) + (capitalGains || 0)) / 12;
+    if (!isMonteCarlo) totalBridgeIncome += mInc;
+
+    // SURPLUS SWEEP & DRAWDOWN MECHANICS
+    let baseSpend = (yrNum < (goGoDuration || 10)) ? (goGoSpend || 0) : (yrNum < (goGoDuration || 10) + (slowGoDuration || 10)) ? (slowGoSpend || 0) : (noGoSpend || 0);
+    
+    const totalCashNeeds = baseSpend + totalDebtPaymentThisMonth + pRothAdd + sRothAdd;
+    const netCashFlow = mInc - totalCashNeeds;
+
+    if (netCashFlow > 0) {
+        curBrokerage += netCashFlow;
     }
-    let baseSpend = (yrNum < goGoDuration) ? goGoSpend : (yrNum < goGoDuration + slowGoDuration) ? slowGoSpend : noGoSpend;
-    baseSpend *= spendMultiplier;
 
-    const support = childConfigs.slice(0, numChildren).reduce((sum, child) => {
-      const startMonth = (child.supportStartYear - BASE_YEAR) * 12;
-      const endMonth = startMonth + (child.supportDuration * 12);
-      return sum + (month >= startMonth && month < endMonth ? child.monthly : 0);
-    }, 0);
+    let monthlyShortfall = netCashFlow < 0 ? Math.abs(netCashFlow) : 0;
+    curCash -= monthlyShortfall;
 
-    const netDraw = Math.max(0, (baseSpend + support) - mInc);
-
-    // Taxes & Data Logging
-    if (month % 12 === 0) {
-      const taxable = rmdThisMonth + convThisMonth + (mInc * 12);
+    // --- TAX CALCULATION (INCLUDING ROTH CONVERSION) ---
+    if (month > 0 && month % 12 === 0) {
+      // We add the annual Roth conversion amount to the taxable base
+      const taxable = rmdThisMonth + (mInc * 12) + (rothConvThisMonth * 12);
       const stdDed = filingStatus === 'MFJ' ? (calYr >= 2026 ? 15000 : 29200) : (calYr >= 2026 ? 7500 : 14600);
-      const fTax = Math.max(0, taxable - stdDed) * (calYr >= 2026 ? 0.25 : 0.22); // Simplified effective engine
+      const fTax = Math.max(0, taxable - stdDed) * 0.22; 
       const sTax = taxable * sRate;
-      
-      let tier = 0;
-      if (filingStatus === 'MFJ') {
-          if (taxable > 750000) tier = 5;
-          else if (taxable > 386000) tier = 4;
-          else if (taxable > 322000) tier = 3;
-          else if (taxable > 258000) tier = 2;
-          else if (taxable > 206000) tier = 1;
-      } else {
-          if (taxable > 500000) tier = 5;
-          else if (taxable > 193000) tier = 4;
-          else if (taxable > 161000) tier = 3;
-          else if (taxable > 129000) tier = 2;
-          else if (taxable > 103000) tier = 1;
-      }
-      
-      curBrokerage -= (fTax + sTax); totalTax += (fTax + sTax);
-      if (tier > 0) irmaaYears++;
+      curCash -= (fTax + sTax); totalTax += (fTax + sTax);
+    }
 
-      if (!isMonteCarlo) {
-        annualTaxData.push({
-           age: Math.floor(age),
-           year: calYr,
-           rmd: rmdThisMonth,
-           conversion: convThisMonth,
-           taxPaid: fTax + sTax,
-           irmaaTier: tier
-        });
+    // Asset Liquidation (Triggered if Cash drops below zero from shortfalls or taxes)
+    if (curCash < 0) {
+      let withdrawalRemaining = Math.abs(curCash);
+      curCash = 0;
+      
+      if (curBrokerage >= withdrawalRemaining) { curBrokerage -= withdrawalRemaining; withdrawalRemaining = 0; } 
+      else { 
+        withdrawalRemaining -= curBrokerage; curBrokerage = 0;
+        if (curHsa >= withdrawalRemaining) { curHsa -= withdrawalRemaining; withdrawalRemaining = 0; }
+        else {
+          withdrawalRemaining -= curHsa; curHsa = 0;
+          if (curRoth >= withdrawalRemaining) { curRoth -= withdrawalRemaining; withdrawalRemaining = 0; } 
+          else { 
+            withdrawalRemaining -= curRoth; curRoth = 0; 
+            if (curIra >= withdrawalRemaining) { curIra -= withdrawalRemaining; withdrawalRemaining = 0; }
+            else { curIra = 0; cur401k -= withdrawalRemaining; }
+          }
+        }
       }
     }
 
-    // Drawdown - Sequenced: Brokerage -> Roth -> IRA
-    let withdrawalRemaining = netDraw;
-    if (curBrokerage >= withdrawalRemaining) { curBrokerage -= withdrawalRemaining; withdrawalRemaining = 0; } 
-    else { withdrawalRemaining -= curBrokerage; curBrokerage = 0;
-      if (curRoth >= withdrawalRemaining) { curRoth -= withdrawalRemaining; withdrawalRemaining = 0; } 
-      else { withdrawalRemaining -= curRoth; curRoth = 0; curIra -= withdrawalRemaining; }
-    }
+    const currentLiquidBal = curCash + curIra + cur401k + curHsa + curRoth + curBrokerage;
 
     if (month % 3 === 0 && !isMonteCarlo) {
-      path.push({ age, balance: Math.round(curIra + curRoth + curBrokerage), ira: Math.round(curIra), roth: Math.round(curRoth), brokerage: Math.round(curBrokerage), projectedHome: Math.round(curHome), withdrawalRate: (curIra + curRoth + curBrokerage) > 0 ? ((netDraw * 12) / (curIra + curRoth + curBrokerage) * 100).toFixed(1) : 0 });
+      path.push({ 
+        age, 
+        balance: Math.round(currentLiquidBal), 
+        ira: Math.round(curIra + cur401k), 
+        roth: Math.round(curRoth), 
+        brokerage: Math.round(curBrokerage), 
+        hsa: Math.round(curHsa), 
+        projectedHome: Math.max(0, Math.round(curHome - currentTotalDebt))
+      });
     }
-    if (isMonteCarlo && month % 12 === 0) path.push({ age: Math.floor(age), balance: curIra + curRoth + curBrokerage });
+    if (isMonteCarlo && month % 12 === 0) path.push({ age: Math.floor(age), balance: currentLiquidBal });
   }
   
   return { 
-    data: path, annualTaxData, finalBalance: curIra + curRoth + curBrokerage, totalRmd, totalTax, irmaaYears, isBroke: (curIra + curRoth + curBrokerage) <= 0,
-    perezPoint, downsizePoint, childGiftPoints, retirementPoint, customEventPoints, primarySsiPoint, spouseSsiPoint, totalSsiIncome, totalBridgeIncome, totalHomeTransactionNet, finalHomeVal: curHome
+    data: path, annualTaxData, finalBalance: curCash + curIra + cur401k + curHsa + curRoth + curBrokerage, totalRmd, totalTax, irmaaYears, 
+    isBroke: (curCash + curIra + cur401k + curHsa + curRoth + curBrokerage) <= 0,
+    perezPoint, downsizePoint, childGiftPoints, retirementPoint, customEventPoints, primarySsiPoint, spouseSsiPoint, 
+    totalSsiIncome, totalBridgeIncome, totalHomeTransactionNet, finalHomeVal: curHome
   };
 };
